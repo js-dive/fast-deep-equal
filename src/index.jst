@@ -2,78 +2,79 @@
 
 // do not edit .js files directly - edit src/index.jst
 
-{{? it.es6 }}
-  var envHasBigInt64Array = typeof BigInt64Array !== 'undefined';
-{{?}}
+function isEqualType(a, b) {
+  if (
+    a === b
+  ) {
+    return true
+  }
+  return [
+    typeof a === typeof b,
+    (a && Object.getPrototypeOf(a)) === (b && Object.getPrototypeOf(b))
+  ].every(function(it) {return it === true})
+}
 
-module.exports = function equal(a, b) {
-  if (a === b) return true;
+function getToStringTagTypeFromValue(val) {
+  const toTagString = Object.prototype.toString.call(val)
+  return toTagString.substring('[object '.length, toTagString.length - 1)
+}
 
-  if (a && b && typeof a == 'object' && typeof b == 'object') {
-    if (a.constructor !== b.constructor) return false;
+function hasSameKey(a, b) {
+  let keysInA = []
+  let keysInB = []
 
-    var length, i, keys;
-    if (Array.isArray(a)) {
-      length = a.length;
-      if (length != b.length) return false;
-      for (i = length; i-- !== 0;)
-        if (!equal(a[i], b[i])) return false;
-      return true;
-    }
-
-{{? it.es6 }}
-    if ((a instanceof Map) && (b instanceof Map)) {
-      if (a.size !== b.size) return false;
-      for (i of a.entries())
-        if (!b.has(i[0])) return false;
-      for (i of a.entries())
-        if (!equal(i[1], b.get(i[0]))) return false;
-      return true;
-    }
-
-    if ((a instanceof Set) && (b instanceof Set)) {
-      if (a.size !== b.size) return false;
-      for (i of a.entries())
-        if (!b.has(i[0])) return false;
-      return true;
-    }
-
-    if (ArrayBuffer.isView(a) && ArrayBuffer.isView(b)) {
-      length = a.length;
-      if (length != b.length) return false;
-      for (i = length; i-- !== 0;)
-        if (a[i] !== b[i]) return false;
-      return true;
-    }
-{{?}}
-
-    if (a.constructor === RegExp) return a.source === b.source && a.flags === b.flags;
-    if (a.valueOf !== Object.prototype.valueOf) return a.valueOf() === b.valueOf();
-    if (a.toString !== Object.prototype.toString) return a.toString() === b.toString();
-
-    keys = Object.keys(a);
-    length = keys.length;
-    if (length !== Object.keys(b).length) return false;
-
-    for (i = length; i-- !== 0;)
-      if (!Object.prototype.hasOwnProperty.call(b, keys[i])) return false;
-
-    for (i = length; i-- !== 0;) {
-      var key = keys[i];
-{{? it.react }}
-      if (key === '_owner' && a.$$typeof) {
-        // React-specific: avoid traversing React elements' _owner.
-        //  _owner contains circular references
-        // and is not needed when comparing the actual elements (and not their owners)
-        continue;
-      }
-{{?}}
-      if (!equal(a[key], b[key])) return false;
-    }
-
-    return true;
+  if (
+      ['Array', 'Object'].includes(getToStringTagTypeFromValue(a))
+  ) {
+      keysInA = [...Object.keys(a), ...Object.getOwnPropertySymbols(a)]
+      keysInB = [...Object.keys(b), ...Object.getOwnPropertySymbols(b)]
   }
 
-  // true if both NaN, false otherwise
-  return a!==a && b!==b;
+  let mergedKeySet = new Set([...keysInA, ...keysInB])
+
+  if (mergedKeySet.size !== keysInA.length || mergedKeySet.size !== keysInB.length) {
+      return false
+  } else {
+      return true
+  }
+}
+
+function hasSameValue(a, b) {
+  let keys = [...Object.keys(a), ...Object.getOwnPropertySymbols(a)]
+  for (let i = 0; i < keys.length; i++) {
+      let k = keys[i]
+      if (!internalDeepEqual(a[k], b[k])) {
+          return false
+      }
+  }
+  return true
+}
+
+function isPrimitiveValue (val) {
+  return val === null || !['function', 'object'].includes(typeof val)
+}
+
+function internalDeepEqual(a, b) {
+  if (a === b) {
+      return true
+  }
+  if (
+      isPrimitiveValue(a) && isPrimitiveValue(b) && a !== b
+  ) {
+      return false
+  }
+  if (!isEqualType(a, b)) {
+      return false
+  }
+  if (!hasSameKey(a, b)) {
+      return false
+  }
+  if (!hasSameValue(a, b)) {
+      return false
+  }
+  return true
+}
+
+module.exports = function equal(a, b) {
+  return internalDeepEqual(a, b);
 };
