@@ -1,14 +1,11 @@
 'use strict';
 
 var equal = require('..');
-var es6equal = require('../es6');
 var assert = require('assert');
 
 testCases(equal, 'equal - standard tests', require('./tests'));
 testCases(equal, 'equal circular reference - gogoend tests', require('./circular-reference-tests'));
-testCases(es6equal, 'es6 equal - standard tests', require('./tests'));
-testCases(es6equal, 'es6 equal - es6 tests', require('./es6tests'));
-
+testCases(equal, 'equal - es6 tests', require('./es6tests'));
 
 function testCases(equalFunc, suiteName, suiteTests) {
   describe(suiteName, function() {
